@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>Books</h2>
+
+{% for book in books %}
+
+<div class="card mb-3">
+    <div class="card-body">
+
+        <h5>{{ book.title }}</h5>
+        <p>{{ book.author }}</p>
+        <p>{{ book.price }} $</p>
+
+        <a href="{% url 'shop:book_detail' book.pk %}" class="btn btn-primary">Details</a>
+        <a href="{% url 'shop:book_update' book.pk %}" class="btn btn-warning">Edit</a>
+        <a href="{% url 'shop:book_delete' book.pk %}" class="btn btn-danger">Delete</a>
+
+    </div>
+</div>
+
+{% endfor %}
+
+
+{% if is_paginated %}
+
+<nav>
+<ul class="pagination">
+
+{% if page_obj.has_previous %}
+<li class="page-item">
+<a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+</li>
+{% endif %}
+
+<li class="page-item active">
+<a class="page-link">{{ page_obj.number }}</a>
+</li>
+
+{% if page_obj.has_next %}
+<li class="page-item">
+<a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+</li>
+{% endif %}
+
+</ul>
+</nav>
+
+{% endif %}
+
+{% endblock %}

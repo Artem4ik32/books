@@ -9,7 +9,13 @@ class Category(models.Model):
 
 
 class Book(models.Model):
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='books')
+    category = models.ForeignKey(
+    Category,
+    on_delete=models.CASCADE,
+    related_name='books',
+    null=True,
+    blank=True
+)
     title = models.CharField(max_length=200)
     author = models.CharField(max_length=150)
     price = models.DecimalField(max_digits=8, decimal_places=2)
