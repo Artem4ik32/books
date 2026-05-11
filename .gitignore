@@ -1,3 +1,18 @@
-venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# Docker & Environment
+.env
+postgres_data/
+
+# OS
+.DS_Store

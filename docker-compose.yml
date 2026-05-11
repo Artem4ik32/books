@@ -1,37 +1,45 @@
-version: '3.9'
-
 services:
   db:
     image: postgres:15
-    container_name: postgres_db
-    restart: always
-    environment:
-      POSTGRES_DB: books_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    env_file: .env
 
   redis:
-    image: redis:7
-    container_name: redis
-    restart: always
-    ports:
-      - "6379:6379"
+    image: redis:7-alpine
 
   web:
     build: .
-    container_name: django_app
-    command: sh docker-entrypoint.sh
+    env_file: .env
     volumes:
       - .:/app
-    ports:
-      - "8000:8000"
+      - static_volume:/app/staticfiles
     depends_on:
       - db
       - redis
 
+  celery:
+    build: .
+    command: celery -A config worker -l info
+    depends_on:
+      - redis
+      - db
+
+  celery-beat:
+    build: .
+    command: celery -A config beat -l info
+    depends_on:
+      - redis
+
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+    volumes:
+      - static_volume:/app/staticfiles
+    depends_on:
+      - web
+
 volumes:
   postgres_data:
+  static_volume:

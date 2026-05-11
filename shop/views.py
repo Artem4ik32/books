@@ -3,14 +3,20 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.core.mail import send_mail
-
-from .models import Book, Order, OrderItem
-from .cart import Cart
-
-import stripe
 from django.conf import settings
 
+from rest_framework import viewsets, permissions, filters
+from django_filters.rest_framework import DjangoFilterBackend
+
+from .models import Book, Category, Order, OrderItem
+from .cart import Cart
+from .serializers import BookSerializer, CategorySerializer, OrderSerializer
+from .permissions import IsOwnerOrReadOnly
+from django.core.cache import cache
+import stripe
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
 
 class BookListView(ListView):
     model = Book
@@ -22,7 +28,9 @@ class BookListView(ListView):
 class BookDetailView(DetailView):
     model = Book
     template_name = "shop/book_detail.html"
-
+    def get_object(self):
+        book_id = self.kwargs.get("pk")
+        return cache.get_or_set(f'book_detail_{book_id}', super().get_object(), 3600)
 
 class BookCreateView(CreateView):
     model = Book
@@ -44,7 +52,7 @@ class BookDeleteView(DeleteView):
     success_url = reverse_lazy("shop:book_list")
 
 
-# CART
+
 def cart_add(request, book_id):
     cart = Cart(request)
     book = Book.objects.get(id=book_id)
@@ -64,12 +72,11 @@ def cart_detail(request):
     return render(request, "shop/cart.html", {"cart": cart})
 
 
-# ORDER
+
 async def create_order(request):
     """
     Asynchronously creates a new order, processes cart items, 
     and sends a confirmation email to the user.
-    Generated with AI.
     """
     cart = Cart(request)
 
@@ -98,17 +105,14 @@ async def create_order(request):
     )
 
     cart.clear()
-
     return render(request, "shop/order_success.html", {"order": order})
 
 
 async def create_checkout_session(request):
     """
     Creates a Stripe checkout session in a non-blocking way.
-    Generated with AI, reviewed and modified.
     """
     cart = Cart(request)
-
     line_items = []
 
     for item in cart:
@@ -132,3 +136,32 @@ async def create_checkout_session(request):
     )
 
     return redirect(session.url)
+
+
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
+class BookViewSet(viewsets.ModelViewSet):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category', 'price']
+    search_fields = ['title', 'author']
+    ordering_fields = ['price']
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Order.objects.all()
+        return Order.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

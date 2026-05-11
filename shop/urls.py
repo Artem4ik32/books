@@ -1,20 +1,29 @@
-from django.urls import path
-from .views import *
-from .views import create_checkout_session
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from shop.views import BookViewSet, CategoryViewSet, OrderViewSet
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
+)
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-app_name = "shop"
+router = DefaultRouter()
+router.register(r'books', BookViewSet)
+router.register(r'categories', CategoryViewSet)
+router.register(r'orders', OrderViewSet, basename='order')
 
 urlpatterns = [
-    path("", BookListView.as_view(), name="book_list"),
-    path("book/<int:pk>/", BookDetailView.as_view(), name="book_detail"),
-    path("book/create/", BookCreateView.as_view(), name="book_create"),
-    path("book/<int:pk>/update/", BookUpdateView.as_view(), name="book_update"),
-    path("book/<int:pk>/delete/", BookDeleteView.as_view(), name="book_delete"),
-
-    path("cart/", cart_detail, name="cart_detail"),
-    path("cart/add/<int:book_id>/", cart_add, name="cart_add"),
-    path("cart/remove/<int:book_id>/", cart_remove, name="cart_remove"),
-
-    path("order/create/", create_order, name="create_order"),
-    path("checkout/", create_checkout_session, name="checkout"),
+    path('admin/', admin.site.urls),
+    path('', include('shop.urls')),
+    
+    path('api/', include(router.urls)),
+    
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
