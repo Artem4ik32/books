@@ -16,7 +16,13 @@ router.register(r'books', BookViewSet)
 router.register(r'categories', CategoryViewSet)
 router.register(r'orders', OrderViewSet, basename='order')
 
+def health_check(request):
+    return JsonResponse({"status": "healthy"}, status=200)
+
 urlpatterns = [
+    path('admin/', admin.site.side_effects if hasattr(admin, 'side_effects') else admin.site.urls), # твій адмін-панель
+    path('health/', health_check, name='health_check'),
+
     path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
     

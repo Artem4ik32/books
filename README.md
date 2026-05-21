@@ -1,3 +1,5 @@
+[![Django CI/CD Pipeline](https://github.com/Artem4ik32/books/actions/workflows/django.yml/badge.svg)](https://github.com/Artem4ik32/books/actions/workflows/django.yml)
+![Code Coverage](https://img.shields.io/badge/coverage-85%25-green)
 # 📚 My Library - Django Bookstore Project
 
 Це навчальний проєкт онлайн-книгарні, розроблений на фреймворку **Django**. Проєкт реалізує сучасні підходи до веб-розробки, включаючи асинхронність, міжнародну локалізацію та повне тестування.
