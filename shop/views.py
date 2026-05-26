@@ -1,10 +1,19 @@
 from django.shortcuts import render, redirect
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import (
+    ListView,
+    DetailView,
+    CreateView,
+    UpdateView,
+    DeleteView,
+)
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.core.mail import send_mail
 from django.conf import settings
-
+import requests
+import logging
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework import viewsets, permissions, filters
 from django_filters.rest_framework import DjangoFilterBackend
 
@@ -28,9 +37,11 @@ class BookListView(ListView):
 class BookDetailView(DetailView):
     model = Book
     template_name = "shop/book_detail.html"
+
     def get_object(self):
         book_id = self.kwargs.get("pk")
-        return cache.get_or_set(f'book_detail_{book_id}', super().get_object(), 3600)
+        return cache.get_or_set(f"book_detail_{book_id}", super().get_object(), 3600)
+
 
 class BookCreateView(CreateView):
     model = Book
@@ -52,7 +63,6 @@ class BookDeleteView(DeleteView):
     success_url = reverse_lazy("shop:book_list")
 
 
-
 def cart_add(request, book_id):
     cart = Cart(request)
     book = Book.objects.get(id=book_id)
@@ -72,10 +82,9 @@ def cart_detail(request):
     return render(request, "shop/cart.html", {"cart": cart})
 
 
-
 async def create_order(request):
     """
-    Asynchronously creates a new order, processes cart items, 
+    Asynchronously creates a new order, processes cart items,
     and sends a confirmation email to the user.
     """
     cart = Cart(request)
@@ -93,7 +102,7 @@ async def create_order(request):
                 order=order,
                 book=item["book"],
                 price=item["price"],
-                quantity=item["quantity"]
+                quantity=item["quantity"],
             )
 
     send_mail(
@@ -116,16 +125,18 @@ async def create_checkout_session(request):
     line_items = []
 
     for item in cart:
-        line_items.append({
-            "price_data": {
-                "currency": "usd",
-                "product_data": {
-                    "name": item["book"].title,
+        line_items.append(
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": item["book"].title,
+                    },
+                    "unit_amount": int(float(item["price"]) * 100),
                 },
-                "unit_amount": int(float(item["price"]) * 100),
-            },
-            "quantity": item["quantity"],
-        })
+                "quantity": item["quantity"],
+            }
+        )
 
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
@@ -138,7 +149,6 @@ async def create_checkout_session(request):
     return redirect(session.url)
 
 
-
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -148,10 +158,14 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'price']
-    search_fields = ['title', 'author']
-    ordering_fields = ['price']
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["category", "price"]
+    search_fields = ["title", "author"]
+    ordering_fields = ["price"]
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -165,3 +179,25 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+logger = logging.getLogger(__name__)
+class BookDetailView(APIView):
+    def get(self, request, pk):
+        book_data = {"id": pk, "title": "Приклад Книги"} 
+        
+        warehouse_url = f"http://project_b:8001/api/warehouse/check/{pk}/"
+        
+        try:
+            response = requests.get(warehouse_url, timeout=3)
+            if response.status_code == 200:
+                book_data["warehouse_info"] = response.json()  # Інтегруємо дані з Проєкту Б
+                logger.info(f"Successfully communication with ProjectB for book {pk}")
+            else:
+                book_data["warehouse_info"] = {"error": "Warehouse returned bad status"}
+                logger.error(f"ProjectB returned status {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            book_data["warehouse_info"] = {"error": "Warehouse service is offline"}
+            logger.error(f"Failed to connect to ProjectB: {str(e)}")
+
+        return Response(book_data)

@@ -2,6 +2,7 @@ import pytest
 from shop.tests.factories import BookFactory, OrderFactory
 from asgiref.sync import sync_to_async
 
+
 @pytest.mark.django_db
 def test_book_str_ai():
     """
@@ -9,6 +10,7 @@ def test_book_str_ai():
     """
     book = BookFactory(title="AI Generated Title")
     assert str(book) == "AI Generated Title"
+
 
 @pytest.mark.django_db
 def test_order_paid_status_ai():

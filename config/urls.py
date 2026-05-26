@@ -10,37 +10,47 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from config.warehouse_views import warehouse_check_api
 
 router = DefaultRouter()
-router.register(r'books', BookViewSet)
-router.register(r'categories', CategoryViewSet)
-router.register(r'orders', OrderViewSet, basename='order')
+router.register(r"books", BookViewSet)
+router.register(r"categories", CategoryViewSet)
+router.register(r"orders", OrderViewSet, basename="order")
+
 
 def health_check(request):
     return JsonResponse({"status": "healthy"}, status=200)
 
-urlpatterns = [
-    path('admin/', admin.site.side_effects if hasattr(admin, 'side_effects') else admin.site.urls), # твій адмін-панель
-    path('health/', health_check, name='health_check'),
 
+urlpatterns = [
+    path(
+        "admin/",
+        admin.site.side_effects if hasattr(admin, "side_effects") else admin.site.urls,
+    ),
+    path('health/', health_check, name='health_check'),
     path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
-    
-    path('api/', include(router.urls)),
-    
+    path("api/", include(router.urls)),
     # JWT Auth
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     # Документація API
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path('api/warehouse/check/<int:book_id>/', warehouse_check_api, name='warehouse_check'),
+    path("", include("shop.urls")),
 ]
 
 urlpatterns += i18n_patterns(
     path("", include("shop.urls")),
-    path("login/", auth_views.LoginView.as_view(template_name="login.html"), name="login"),
+    path(
+        "login/", auth_views.LoginView.as_view(template_name="login.html"), name="login"
+    ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
-    prefix_default_language=False
+    prefix_default_language=False,
 )

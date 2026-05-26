@@ -1,45 +1,69 @@
+version: '3.8'
+
 services:
-  db:
+  # База даних для Книжкового магазину (Проєкт А)
+  db_a:
     image: postgres:15
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    env_file: .env
+      - postgres_data_a:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres_store
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+
+  # База даних для Складу (Проєкт Б)
+  db_b:
+    image: postgres:15
+    volumes:
+      - postgres_data_b:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres_warehouse
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5433:5432"
 
   redis:
-    image: redis:7-alpine
+    image: redis:7
+    ports:
+      - "6379:6379"
 
-  web:
+  # Проєкт А - Основний книжковий магазин (Порт 8000)
+  project_a:
     build: .
-    env_file: .env
     volumes:
       - .:/app
-      - static_volume:/app/staticfiles
-    depends_on:
-      - db
-      - redis
-
-  celery:
-    build: .
-    command: celery -A config worker -l info
-    depends_on:
-      - redis
-      - db
-
-  celery-beat:
-    build: .
-    command: celery -A config beat -l info
-    depends_on:
-      - redis
-
-  nginx:
-    build: ./nginx
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.development
+      - DB_HOST=db_a
+      - DB_NAME=postgres_store
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
     ports:
-      - "80:80"
-    volumes:
-      - static_volume:/app/staticfiles
+      - "8000:8000"
     depends_on:
-      - web
+      - db_a
+      - redis
+
+  # Проєкт Б - Склад (Порт 8001)
+  project_b:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.development
+      - DB_HOST=db_b
+      - DB_NAME=postgres_warehouse
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    ports:
+      - "8001:8000"
+    depends_on:
+      - db_b
+      - redis
 
 volumes:
-  postgres_data:
-  static_volume:
+  postgres_data_a:
+  postgres_data_b:

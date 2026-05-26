@@ -7,6 +7,7 @@ from shop.tests.factories import BookFactory, CategoryFactory, UserFactory
 from shop.forms import BookForm
 from asgiref.sync import sync_to_async
 
+
 @pytest.mark.django_db
 class TestModels:
     def test_category_str(self):
@@ -36,19 +37,27 @@ class TestModels:
         book = BookFactory(price=price)
         assert book.price == price
 
+
 @pytest.mark.django_db
 class TestForms:
     def test_book_form_valid(self):
         cat = CategoryFactory()
-        form = BookForm(data={
-            'category': cat.id, 'title': 'Test', 'author': 'Author',
-            'price': 10.00, 'description': 'Desc', 'stock': 5
-        })
+        form = BookForm(
+            data={
+                "category": cat.id,
+                "title": "Test",
+                "author": "Author",
+                "price": 10.00,
+                "description": "Desc",
+                "stock": 5,
+            }
+        )
         assert form.is_valid()
 
     def test_book_form_invalid(self):
         form = BookForm(data={})
         assert not form.is_valid()
+
 
 @pytest.mark.asyncio
 @pytest.mark.django_db
@@ -57,6 +66,7 @@ async def test_async_cart_add(async_client):
     url = reverse("shop:cart_add", kwargs={"book_id": book.id})
     response = await async_client.get(url)
     assert response.status_code == 302
+
 
 @pytest.mark.asyncio
 @pytest.mark.django_db
@@ -67,6 +77,7 @@ async def test_async_stripe_checkout(mock_stripe, async_client):
     response = await async_client.get(url)
     assert response.status_code == 302
     assert response.url == "http://fake-stripe.com"
+
 
 @pytest.mark.asyncio
 @pytest.mark.django_db
@@ -95,9 +106,11 @@ class TestUserFlows:
     async def test_full_buy_flow(self, async_client):
         book = await sync_to_async(BookFactory.create)(price=10)
         with patch("shop.views.send_mail") as mock_mail:
-            await async_client.get(reverse("shop:cart_add", kwargs={"book_id": book.id}))
+            await async_client.get(
+                reverse("shop:cart_add", kwargs={"book_id": book.id})
+            )
             response = await async_client.get(reverse("shop:create_order"))
-            
+
             assert response.status_code == 200
             count = await sync_to_async(Order.objects.count)()
             assert count >= 1
@@ -105,5 +118,5 @@ class TestUserFlows:
 
     def test_i18n_switching(self, client):
         url = reverse("set_language")
-        response = client.post(url, data={'language': 'uk'})
+        response = client.post(url, data={"language": "uk"})
         assert response.status_code == 302

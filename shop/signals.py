@@ -3,7 +3,8 @@ from django.dispatch import receiver
 from django.core.cache import cache
 from .models import Book
 
+
 @receiver([post_save, post_delete], sender=Book)
 def invalidate_book_cache(sender, instance, **kwargs):
-    cache.delete(f'book_detail_{instance.id}')
-    cache.delete('books_list_cache')
+    cache.delete(f"book_detail_{instance.id}")
+    cache.delete("books_list_cache")
